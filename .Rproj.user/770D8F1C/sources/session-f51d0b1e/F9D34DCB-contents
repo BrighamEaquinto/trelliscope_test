@@ -1,0 +1,102 @@
+# Libraries & Data --------------------------------------------------------
+devtools::install_github("hafen/trelliscopejs", force=TRUE)
+library(trelliscopejs)
+library(tidyverse)
+library(arrow)
+library(gapminder)
+
+
+# path <- tempfile("NBA5")
+# dir.create(path)
+
+nba_dat <- read_parquet("C:\\Users\\Bethany\\OneDrive - BYU-Idaho\\Documents\\DataThink\\trelliscope_nba\\nba_game_logs.gz.parquet") 
+
+
+# Wrangling & Graph ---------------------------------------------------------------------
+
+cols <- c("year_season", "name_team", "name_player", "slug_team", "slug_opponent", "slug_team_winner", "outcome_game", "fgm", "fga", "pct_fg", "pct_ft", "minutes", "ftm", "fta", "ast", "pf", "pts", "treb", "oreb", "dreb", "tov", "stl", "blk")
+
+
+nba_dat2 <- nba_dat |>
+  filter(year_season == 2019) |> 
+  select(all_of(cols)) |>
+  mutate(is_pacific = case_when(
+    name_team %in% c("Sacramento Kings", "LA Clippers", "Phoenix Suns", 
+                     "Golden State Warriors", "Los Angeles Lakers") ~ TRUE,
+    TRUE ~ FALSE)) |> 
+  filter(is_pacific == TRUE)
+
+
+mylm <- lm(fgm ~ minutes, data = nba_dat2)
+summary(mylm)
+
+
+ggplot(nba_dat2, aes(minutes, fgm, color = "orange"))+
+  geom_jitter(alpha = 3/5, size = 5, show.legend = FALSE)+
+  geom_smooth(linetype = "dashed", color = "gray20", method = "lm", formula = y~x, se=FALSE)+
+  labs(x="Minutes Played", y="FG Made", subtitle="NBA Pacific Division: 2019")+
+  theme_minimal()+
+  # facet_wrap(~name_team)
+  facet_trelliscope(~name_team + name_player, 
+                    ncol = 4, nrow = 2, 
+                    # path = file.path(path, "NBA"),
+                    path = "C:\\Users\\Bethany\\OneDrive - BYU-Idaho\\Documents\\DataThink\\trelliscope_test",
+                    name = "Pacific Division: Minutes by Field Goals",
+                    self_contained = TRUE) |> 
+  tr_charm(password = "NBA")
+
+
+
+# Data Dictionary ---------------------------------------------------------
+
+# "year_season":, 
+# "name_team":,
+# "name_player":,
+# "slug_team":,
+# "slug_opponent":,
+# "slug_team_winner":,
+# "outcome_game":, 
+# "fgm": "field goals made",
+# "fga": "field goals attempted",
+# "pct_fg": "percent field goals", 
+# "pct_ft": "ratio of made to attempted",
+# "minutes": "minutes played",
+# "ftm": "free throws made"
+# "fta": "free throws attempted",
+# "ast": "assists made",
+# "pf": "personal fouls",
+# "pts": "points",
+# "treb": "total rebounds",
+# "oreb": "offensive rebounds", 
+# "dreb": "deffensive rebounds",
+# "tov": "turnovers",
+# "stl": "steals",
+# "blk": "blocks"
+
+
+
+# Code Graveyard ----------------------------------------------------------
+
+# qplot(year, lifeExp, data = gapminder) +
+#   xlim(1948, 2011) + ylim(10, 95) + theme_bw() +
+#   facet_trelliscope(~ country + continent, 
+#                     nrow = 2, ncol = 7, width = 300, 
+#                     path = file.path(path, "NBA"), 
+#                     self_contained = TRUE)
+# 
+# 
+# 
+# nba_dat |>
+#   select(year_season, name_team, name_player, pts) |>
+#   filter(year_season %in% c("2017", "2018", "2019"),
+#          name_team %in% c("Golden State Warriors", "Atlanta Hawks")) |> 
+#   mutate(name_player = fct_reorder(name_player, pts, .fun = mean, na.rm = TRUE), 
+#          name_team = factor(name_team)) |>
+#   arrange(-year_season, -pts) |> 
+#   ggplot(aes(x=pts, y=name_player, fill = pts))+
+#   # stat_density_ridges(quantile_lines = TRUE)+
+#   geom_boxplot()+
+#   labs(x = "Points", y = "Player")+
+#   # facet_wrap(~name_team + name_player, drop = TRUE)
+#   facet_trelliscope(~ name_player, ncol = 4, nrow = 2)
+#   
